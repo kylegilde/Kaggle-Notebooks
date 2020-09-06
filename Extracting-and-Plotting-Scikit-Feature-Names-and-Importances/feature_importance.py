@@ -31,7 +31,7 @@ class FeatureImportance:
     
     feature_importance :  A Pandas Series containing the feature importance values and feature names as the index.    
     discarded_features : The features names that were not selected by a sklearn.feature_selection instance.
-    plot_importances_dt : A Pandas DataFrame containing the subset of features and values that are actually displaced in the plot. 
+    plot_importances_df : A Pandas DataFrame containing the subset of features and values that are actually displaced in the plot. 
     
     
     
@@ -260,7 +260,7 @@ class FeatureImportance:
         all_importances = self.get_feature_importance()
         n_all_importances = len(all_importances)
         
-        plot_importances_dt =\
+        plot_importances_df =\
             all_importances\
             .sort_values()\
             .to_frame('value')\
@@ -270,11 +270,11 @@ class FeatureImportance:
             .reset_index()
                 
         if max_scale:
-            plot_importances_dt['value'] = \
-                                plot_importances_dt.value.abs() /\
-                                plot_importances_dt.value.abs().max() * 100
+            plot_importances_df['value'] = \
+                                plot_importances_df.value.abs() /\
+                                plot_importances_df.value.abs().max() * 100
             
-        self.plot_importances_dt = plot_importances_dt.copy()
+        self.plot_importances_df = plot_importances_df.copy()
         
         if len(all_importances) < top_n_features:
             title_text = 'All Feature Importances'
@@ -283,12 +283,12 @@ class FeatureImportance:
         
         if rank_features:
             padded_features = \
-                plot_importances_dt.feature\
+                plot_importances_df.feature\
                 .str.pad(width=str_pad_width)\
                 .values
             
             ranked_features =\
-                plot_importances_dt.index\
+                plot_importances_df.index\
                 .to_series()\
                 .sort_values(ascending=False)\
                 .add(1)\
@@ -296,16 +296,16 @@ class FeatureImportance:
                 .str.cat(padded_features, sep='. ')\
                 .values
 
-            plot_importances_dt['feature'] = ranked_features
+            plot_importances_df['feature'] = ranked_features
         
         if display_imp_values:
-            text = plot_importances_dt.value.round(display_imp_value_decimals)
+            text = plot_importances_df.value.round(display_imp_value_decimals)
         else:
             text = None
 
         # create the plot 
         
-        fig = px.bar(plot_importances_dt, 
+        fig = px.bar(plot_importances_df, 
                      x='value', 
                      y='feature',
                      orientation=orientation, 
