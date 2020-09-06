@@ -29,9 +29,9 @@ class FeatureImportance:
     Attributes
     __________
     
-    importances :  A pandas Series containing the feature importance values and feature names as the index.    
-    discarded_features : the features names that were not selected by a sklearn.feature_selection instance
-    plot_importances : A pandas Series containing the subset of values that are actually displaced in the plot. 
+    feature_importance :  A Pandas Series containing the feature importance values and feature names as the index.    
+    discarded_features : The features names that were not selected by a sklearn.feature_selection instance.
+    plot_importances_dt : A Pandas DataFrame containing the subset of features and values that are actually displaced in the plot. 
     
     
     
@@ -191,7 +191,7 @@ class FeatureImportance:
         """
         Creates a Pandas Series where values are the feature importance values from the model and feature names are set as the index. 
         
-        This Series is stored in the importances attribute.
+        This Series is stored in the `feature_importance` attribute.
 
         Returns
         -------
@@ -211,10 +211,10 @@ class FeatureImportance:
         assert len(features) == len(importance_values),\
             "The number of feature names & importance values doesn't match"
         
-        importances = pd.Series(importance_values, index=features)
-        self.importances = importances
+        feature_importance = pd.Series(importance_values, index=features)
+        self.feature_importance = feature_importance
         
-        return importances
+        return feature_importance
         
     
     def plot(self, top_n_features=100, rank_features=True, max_scale=True, 
@@ -236,13 +236,14 @@ class FeatureImportance:
         display_imp_values : Should the importance values be displayed? Default is True.
         display_imp_value_decimals : If display_imp_values is True, how many decimal places should be displayed. Default is 1.
         height_per_feature : if height is None, the plot height is calculated by top_n_features * height_per_feature. 
-            This allows all the features enough space to be displayed
+        This allows all the features enough space to be displayed
         orientation : the plot orientation, 'h' (default) or 'v'
         width :  the width of the plot, default is 500
         height : the height of the plot, the default is top_n_features * height_per_feature
         str_pad_width : When rank_features=True, this number of spaces to add between the rank integer and feature name. 
             This will enable the rank integers to line up with each other for easier reading. 
-            Default is 15. It can also be set to 0.
+            Default is 15. If you have long feature names, you can increase this number to make the integers line up more.
+            It can also be set to 0.
         yaxes_tickfont_family : the font for the feature names. Default is Courier New.
         yaxes_tickfont_size : the font size for the feature names. Default is 15.
 
@@ -259,15 +260,21 @@ class FeatureImportance:
         all_importances = self.get_feature_importance()
         n_all_importances = len(all_importances)
         
-        plot_importances = all_importances\
-                        .nlargest(top_n_features)\
-                        .sort_values()
+        plot_importances_dt =\
+            all_importances\
+            .sort_values()\
+            .to_frame('value')\
+            .nlargest(top_n_features, 'value')\
+            .sort_values('value', ascending=True)\
+            .rename_axis('feature')\
+            .reset_index()
                 
         if max_scale:
-            plot_importances = plot_importances.abs() /\
-                                plot_importances.abs().max() * 100
+            plot_importances_dt['value'] = \
+                                plot_importances_dt.value.abs() /\
+                                plot_importances_dt.value.abs().max() * 100
             
-        self.plot_importances = plot_importances.copy()
+        self.plot_importances_dt = plot_importances_dt.copy()
         
         if len(all_importances) < top_n_features:
             title_text = 'All Feature Importances'
@@ -275,28 +282,39 @@ class FeatureImportance:
             title_text = f'Top {top_n_features} (of {n_all_importances}) Feature Importances'       
         
         if rank_features:
-            existing_index = plot_importances.index.to_series()\
-                                                .reset_index(drop=True)\
-                                                .str.pad(width=str_pad_width)
+            padded_features = \
+                plot_importances_dt.feature\
+                .str.pad(width=str_pad_width)\
+                .values
             
-            ranked_index = pd.Series(range(1, len(plot_importances) + 1)[::-1])\
-                        .astype(str)\
-                        .str.cat(existing_index, sep='. ')
+            ranked_features =\
+                plot_importances_dt.index\
+                .to_series()\
+                .sort_values(ascending=False)\
+                .add(1)\
+                .astype(str)\
+                .str.cat(padded_features, sep='. ')\
+                .values
 
-            plot_importances.index = ranked_index
+            plot_importances_dt['feature'] = ranked_features
         
         if display_imp_values:
-            text = plot_importances.round(display_imp_value_decimals)
+            text = plot_importances_dt.value.round(display_imp_value_decimals)
         else:
             text = None
 
         # create the plot 
         
-        fig = px.bar(plot_importances, orientation=orientation, width=width, 
-                     height=height, text=text)
+        fig = px.bar(plot_importances_dt, 
+                     x='value', 
+                     y='feature',
+                     orientation=orientation, 
+                     width=width, 
+                     height=height,
+                     text=text)
         fig.update_layout(title_text=title_text, title_x=0.5) 
         fig.update(layout_showlegend=False)
         fig.update_yaxes(tickfont=dict(family=yaxes_tickfont_family, 
                                        size=yaxes_tickfont_size),
-                        title='')
+                         title='')
         fig.show()

@@ -34,7 +34,7 @@ SEED = 5
 
 #### load data ####
 
-train_df = pd.read_csv('/kaggle/input/house-prices-advanced-regression-techniques/train.csv')\
+train_df = pd.read_csv('../kaggle/input/house-prices-advanced-regression-techniques/train.csv')\
             .set_index('Id')\
             .fillna(np.nan)
 
