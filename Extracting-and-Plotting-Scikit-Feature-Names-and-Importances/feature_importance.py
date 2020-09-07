@@ -1,3 +1,4 @@
+
 import numpy as np  
 import pandas as pd  
 from sklearn.compose import ColumnTransformer
@@ -41,7 +42,7 @@ class FeatureImportance:
         self.verbose = verbose
 
 
-    def get_feature_names_from_col_transformer(self, verbose=None):  
+    def get_feature_names(self, verbose=None):  
 
         """
 
@@ -69,7 +70,7 @@ class FeatureImportance:
         if verbose is None:
             verbose = self.verbose
             
-        if verbose: print('''\n\n---------\nRunning get_feature_names_from_col_transformer\n---------\n''')
+        if verbose: print('''\n\n---------\nRunning get_feature_names\n---------\n''')
         
         column_transformer = self.pipeline[0]        
         assert isinstance(column_transformer, ColumnTransformer), "Input isn't a ColumnTransformer"
@@ -153,7 +154,7 @@ class FeatureImportance:
 
         assert isinstance(self.pipeline, Pipeline), "Input isn't a Pipeline"
 
-        features = self.get_feature_names_from_col_transformer()
+        features = self.get_feature_names()
         
         if verbose: print('\n\n---------\nRunning get_selected_features\n---------\n')
             
@@ -262,10 +263,9 @@ class FeatureImportance:
         
         plot_importances_df =\
             all_importances\
+            .nlargest(top_n_features)\
             .sort_values()\
             .to_frame('value')\
-            .nlargest(top_n_features, 'value')\
-            .sort_values('value', ascending=True)\
             .rename_axis('feature')\
             .reset_index()
                 
