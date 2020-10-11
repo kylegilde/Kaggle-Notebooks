@@ -35,6 +35,8 @@ class FeatureImportance:
     discarding_selectors : A list of the selector names corresponding with the `discarded_features` attribute
     feature_importance :  A Pandas Series containing the feature importance values and feature names as the index.    
     plot_importances_df : A Pandas DataFrame containing the subset of features and values that are actually displaced in the plot. 
+    feature_info_df : A Pandas DataFrame that aggregates the other attributes. The index is column_transformer_features. The transformer column contains the transformer_list.
+        value contains the feature_importance values. discarding_selector contains discarding_selectors & is_retained is a Boolean indicating whether the feature was retained.
     
     
     
@@ -226,6 +228,23 @@ class FeatureImportance:
         
         feature_importance = pd.Series(importance_values, index=features)
         self.feature_importance = feature_importance
+        
+        # create feature_info_df
+        column_transformer_df =\
+            pd.DataFrame(dict(transformer=self.transformer_list),
+                         index=self.column_transformer_features)
+
+        discarded_features_df =\
+            pd.DataFrame(dict(discarding_selector=self.discarding_selectors),
+                         index=self.discarded_features)
+
+        importance_df = self.feature_importance.rename('value').to_frame()
+
+        self.feature_info_df = \
+            column_transformer_df\
+            .join([importance_df, discarded_features_df])\
+            .assign(is_retained = lambda df: ~df.value.isna())        
+
 
         return feature_importance
         
