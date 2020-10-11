@@ -29,9 +29,11 @@ class FeatureImportance:
     
     Attributes
     __________
-    
+    column_transformer_features :  A list of the feature names created by the ColumnTransformer prior to any selectors being applied
+    transformer_list : A list of the transformer names that correspond with the `column_transformer_features` attribute
+    discarded_features : A list of the features names that were not selected by a sklearn.feature_selection instance.
+    discarding_selectors : A list of the selector names corresponding with the `discarded_features` attribute
     feature_importance :  A Pandas Series containing the feature importance values and feature names as the index.    
-    discarded_features : The features names that were not selected by a sklearn.feature_selection instance.
     plot_importances_df : A Pandas DataFrame containing the subset of features and values that are actually displaced in the plot. 
     
     
@@ -76,7 +78,7 @@ class FeatureImportance:
         assert isinstance(column_transformer, ColumnTransformer), "Input isn't a ColumnTransformer"
         check_is_fitted(column_transformer)
 
-        new_feature_names = []
+        new_feature_names, transformer_list = [], []
 
         for i, transformer_item in enumerate(column_transformer.transformers_): 
             
@@ -88,7 +90,7 @@ class FeatureImportance:
                       transformer.__class__.__name__, '\n')
                 print('\tn_orig_feature_names:', len(orig_feature_names))
 
-            if transformer_name == 'remainder' and transformer == 'drop':
+            if transformer == 'drop':
                     
                 continue
                 
@@ -129,6 +131,10 @@ class FeatureImportance:
                 print('\tnew_features:\n', names)
 
             new_feature_names.extend(names)
+            transformer_list.extend([transformer_name] * len(names))
+        
+        self.transformer_list, self.column_transformer_features = transformer_list,\
+                                                                    new_feature_names
 
         return new_feature_names
 
@@ -144,7 +150,7 @@ class FeatureImportance:
 
         Returns
         -------
-        a list of the correct feature names
+        a list of the selected feature names
 
 
         """
@@ -158,7 +164,7 @@ class FeatureImportance:
         
         if verbose: print('\n\n---------\nRunning get_selected_features\n---------\n')
             
-        all_discarded_features = []
+        all_discarded_features, discarding_selectors = [], []
 
         for i, step_item in enumerate(self.pipeline.steps[:]):
             
@@ -171,19 +177,25 @@ class FeatureImportance:
                     
                 check_is_fitted(step)
 
-                feature_mask = step.get_support()
-                features = [feature for feature, is_retained in zip(features, feature_mask)\
+                feature_mask_dict = dict(zip(features, step.get_support()))
+                
+                features = [feature for feature, is_retained in feature_mask_dict.items()\
                             if is_retained]
-                discarded_features = [feature for feature, is_retained in zip(features, feature_mask)\
+                                         
+                discarded_features = [feature for feature, is_retained in feature_mask_dict.items()\
                                       if not is_retained]
+                
                 all_discarded_features.extend(discarded_features)
+                discarding_selectors.extend([step_name] * len(discarded_features))
+                
                 
                 if verbose: 
                     print(f'\t{len(features)} retained, {len(discarded_features)} discarded')
                     if len(discarded_features) > 0:
                         print('\n\tdiscarded_features:\n\n', discarded_features)
 
-        self.discarded_features = all_discarded_features
+        self.discarded_features, self.discarding_selectors = all_discarded_features,\
+                                                                discarding_selectors
         
         return features
 
@@ -214,7 +226,7 @@ class FeatureImportance:
         
         feature_importance = pd.Series(importance_values, index=features)
         self.feature_importance = feature_importance
-        
+
         return feature_importance
         
     
