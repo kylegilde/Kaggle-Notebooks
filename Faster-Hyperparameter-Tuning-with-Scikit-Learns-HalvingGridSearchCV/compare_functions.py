@@ -32,4 +32,4 @@ def compare_cv_best_params(full_results, *halving_results):
         
         df_list.append(best_params_score)
         
-    return pd.concat(df_list).reset_index(drop=True)  
+    return pd.concat(df_list).reset_index()  
